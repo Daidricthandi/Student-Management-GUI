@@ -4,7 +4,7 @@ import javafx.scene.control.Button;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import View.AddStudentView;
-import Util.DataManager;
+import View.ListStudentView;
 
 public class Main extends Application {
 
@@ -15,10 +15,7 @@ public class Main extends Application {
         addBtn.setOnAction(e -> AddStudentView.display()); // Opens Add Student window
 
         Button listBtn = new Button("List Students");
-        listBtn.setOnAction(e -> {
-            // In the future, we will open a ListStudentView window instead of printing
-            System.out.println(DataManager.getStudents());
-        });
+        listBtn.setOnAction(e -> ListStudentView.display()); // ✅ Opens List Student window
 
         Button exitBtn = new Button("Exit");
         exitBtn.setOnAction(e -> primaryStage.close()); // Close the application
