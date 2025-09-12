@@ -1,10 +1,12 @@
 package View;
 
 import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
+import javafx.collections.transformation.FilteredList;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import Model.Student;
@@ -14,59 +16,99 @@ public class ListStudentView {
 
     public static void display() {
         Stage window = new Stage();
-        window.setTitle("List Students");
+        window.setTitle("List of Students");
 
+        // Create a search field
+        TextField searchField = new TextField();
+        searchField.setPromptText("Search by ID or Name...");
+
+        // Table to display students
         TableView<Student> table = new TableView<>();
+        table.setItems(FXCollections.observableArrayList(DataManager.getStudents()));
 
         TableColumn<Student, String> idColumn = new TableColumn<>("ID");
-        idColumn.setCellValueFactory(new PropertyValueFactory<>("id"));
+        idColumn.setCellValueFactory(cellData -> new javafx.beans.property.SimpleStringProperty(cellData.getValue().getId()));
 
         TableColumn<Student, String> nameColumn = new TableColumn<>("Name");
-        nameColumn.setCellValueFactory(new PropertyValueFactory<>("name"));
+        nameColumn.setCellValueFactory(cellData -> new javafx.beans.property.SimpleStringProperty(cellData.getValue().getName()));
 
-        TableColumn<Student, Integer> ageColumn = new TableColumn<>("Age");
-        ageColumn.setCellValueFactory(new PropertyValueFactory<>("age"));
+        table.getColumns().addAll(idColumn, nameColumn);
 
-        TableColumn<Student, String> courseColumn = new TableColumn<>("Course");
-        courseColumn.setCellValueFactory(new PropertyValueFactory<>("course"));
+        // Wrap the student list in a FilteredList for searching
+        FilteredList<Student> filteredData = new FilteredList<>(FXCollections.observableArrayList(DataManager.getStudents()), p -> true);
+        table.setItems(filteredData);
 
-        table.getColumns().addAll(idColumn, nameColumn, ageColumn, courseColumn);
+        // Filter logic: updates when user types
+        searchField.textProperty().addListener((observable, oldValue, newValue) -> {
+            filteredData.setPredicate(student -> {
+                if (newValue == null || newValue.isEmpty()) {
+                    return true; // Show all if search is empty
+                }
 
-        ObservableList<Student> studentsList = FXCollections.observableArrayList(DataManager.getStudents());
-        table.setItems(studentsList);
+                String lowerCaseFilter = newValue.toLowerCase();
 
-        Button editBtn = new Button("Edit Selected");
-        editBtn.setOnAction(e -> {
-            Student selected = table.getSelectionModel().getSelectedItem();
-            if (selected != null) {
-                EditStudentView.display(selected);
-                table.setItems(FXCollections.observableArrayList(DataManager.getStudents()));
-            } else {
-                showAlert("No selection", "Please select a student to edit.");
-            }
+                return student.getId().toLowerCase().contains(lowerCaseFilter) ||
+                        student.getName().toLowerCase().contains(lowerCaseFilter);
+            });
         });
 
-        Button deleteBtn = new Button("Delete Selected");
-        deleteBtn.setOnAction(e -> {
-            Student selected = table.getSelectionModel().getSelectedItem();
-            if (selected != null) {
-                DataManager.deleteStudent(selected);
-                table.setItems(FXCollections.observableArrayList(DataManager.getStudents()));
-            } else {
-                showAlert("No selection", "Please select a student to delete.");
-            }
-        });
+        // Edit button
+        Button editButton = new Button("Edit Selected");
+        editButton.setOnAction(e -> editSelectedStudent(table));
 
-        VBox layout = new VBox(10, table, editBtn, deleteBtn);
+        // Delete button
+        Button deleteButton = new Button("Delete Selected");
+        deleteButton.setOnAction(e -> deleteSelectedStudent(table, filteredData));
+
+        // Layout
+        HBox buttonLayout = new HBox(10, editButton, deleteButton);
+        buttonLayout.setAlignment(Pos.CENTER);
+
+        VBox layout = new VBox(10, searchField, table, buttonLayout);
+        layout.setPadding(new Insets(10));
+
         Scene scene = new Scene(layout, 500, 400);
         window.setScene(scene);
         window.show();
     }
 
-    private static void showAlert(String title, String message) {
-        Alert alert = new Alert(Alert.AlertType.WARNING);
+    // Method to edit a selected student
+    private static void editSelectedStudent(TableView<Student> table) {
+        Student selected = table.getSelectionModel().getSelectedItem();
+        if (selected == null) {
+            showAlert("No Selection", "Please select a student to edit.");
+            return;
+        }
+        TextInputDialog dialog = new TextInputDialog(selected.getName());
+        dialog.setTitle("Edit Student");
+        dialog.setHeaderText("Editing Student: " + selected.getId());
+        dialog.setContentText("Enter new name:");
+
+        dialog.showAndWait().ifPresent(newName -> {
+            selected.setName(newName);
+            DataManager.saveStudents();
+            table.refresh();
+        });
+    }
+
+    // Method to delete a selected student
+    private static void deleteSelectedStudent(TableView<Student> table, FilteredList<Student> filteredData) {
+        Student selected = table.getSelectionModel().getSelectedItem();
+        if (selected == null) {
+            showAlert("No Selection", "Please select a student to delete.");
+            return;
+        }
+        DataManager.removeStudent(selected);
+        filteredData.getSource().remove(selected);
+        table.refresh();
+    }
+
+    // Helper method for alerts
+    private static void showAlert(String title, String content) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle(title);
-        alert.setContentText(message);
+        alert.setHeaderText(null);
+        alert.setContentText(content);
         alert.showAndWait();
     }
 }

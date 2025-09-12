@@ -1,5 +1,7 @@
 package Model;
 
+import java.util.Objects;
+
 public class Student {
     private String id;
     private String name;
@@ -20,6 +22,12 @@ public class Student {
     public int getAge() { return age; }
     public String getCourse() { return course; }
 
+    // Setters
+    public void setId(String id) { this.id = id; }
+    public void setName(String name) { this.name = name; }
+    public void setAge(int age) { this.age = age; }
+    public void setCourse(String course) { this.course = course; }
+
     // Convert student to CSV line for saving to file
     public String toCSV() {
         return id + "," + name + "," + age + "," + course;
@@ -28,5 +36,18 @@ public class Student {
     @Override
     public String toString() {
         return name + " (" + id + ")";
+    }
+    // Equality based on ID (IDs should be unique). This helps list operations.
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Student)) return false;
+        Student student = (Student) o;
+        return Objects.equals(id, student.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
     }
 }
