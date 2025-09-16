@@ -1,81 +1,87 @@
 package View;
 
-import javafx.geometry.Pos;
-import javafx.scene.Scene;
+import Util.DataManager;
+import javafx.geometry.Insets;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
-import javafx.stage.Stage;
 import Model.Student;
-import Util.DataManager;
 
 public class AddStudentView {
 
-    public static void display() {
-        Stage window = new Stage(); // Create new window
-        window.setTitle("Add Student");
-
-        // Label for showing messages
-        Label messageLabel = new Label();
-
+    // Returns a Pane to be placed in the main content area
+    public static Pane getView(Pane contentArea) {
         // Input fields
         TextField idField = new TextField();
-        idField.setPromptText("ID");
+        idField.setPromptText("e.g. 001");
 
         TextField nameField = new TextField();
-        nameField.setPromptText("Name");
+        nameField.setPromptText("Full name");
 
         TextField ageField = new TextField();
         ageField.setPromptText("Age");
 
         TextField courseField = new TextField();
-        courseField.setPromptText("Course");
+        courseField.setPromptText("Course (e.g. Computer Science)");
+
+        Label messageLabel = new Label();
 
         // Save button
-        Button saveBtn = new Button("Save");
+        Button saveBtn = new Button("Save Student");
         saveBtn.setOnAction(e -> {
+            String id = idField.getText().trim();
+            String name = nameField.getText().trim();
+            String ageText = ageField.getText().trim();
+            String course = courseField.getText().trim();
+
+            // Basic validation
+            if (id.isEmpty() || name.isEmpty() || ageText.isEmpty() || course.isEmpty()) {
+                messageLabel.setText("❌ Please fill in all fields.");
+                return;
+            }
+
             try {
-                String id = idField.getText();
-                String name = nameField.getText();
-                int age = Integer.parseInt(ageField.getText());
-                String course = courseField.getText();
+                int age = Integer.parseInt(ageText);
 
-                // Validation: no empty fields
-                if(id.isEmpty() || name.isEmpty() || course.isEmpty()) {
-                    messageLabel.setText("Please fill in all fields!");
-                    return;
-                }
-
+                // Create student with course included
                 Student student = new Student(id, name, age, course);
                 DataManager.addStudent(student);
 
-                // Show confirmation in the window
-                messageLabel.setText("Student saved: " + student.getName());
-
-                // Clear input fields
+                messageLabel.setText("✅ Student added successfully!");
                 idField.clear();
                 nameField.clear();
                 ageField.clear();
                 courseField.clear();
-
             } catch (NumberFormatException ex) {
-                messageLabel.setText("Age must be a number!");
+                messageLabel.setText("❌ Age must be a number.");
             }
         });
 
-        // Layout
-        VBox layout = new VBox(10,
-                new Label("Enter student details:"),
-                idField, nameField, ageField, courseField,
-                saveBtn,
-                messageLabel
-        );
-        layout.setAlignment(Pos.CENTER);
-        layout.setStyle("-fx-padding: 20;");
+        // Back button: returns to List view inside the same window
+        Button backBtn = new Button("← Back to List");
+        backBtn.setOnAction(e -> contentArea.getChildren().setAll(ListStudentView.getView(contentArea)));
 
-        Scene scene = new Scene(layout, 300, 350);
-        window.setScene(scene);
-        window.show();
+        // Form layout
+        GridPane form = new GridPane();
+        form.setHgap(10);
+        form.setVgap(10);
+        form.add(new Label("Student ID:"), 0, 0);
+        form.add(idField, 1, 0);
+        form.add(new Label("Name:"), 0, 1);
+        form.add(nameField, 1, 1);
+        form.add(new Label("Age:"), 0, 2);
+        form.add(ageField, 1, 2);
+        form.add(new Label("Course:"), 0, 3);
+        form.add(courseField, 1, 3);
+        form.add(saveBtn, 1, 4);
+
+        // Container
+        VBox layout = new VBox(15, form, messageLabel, backBtn);
+        layout.setPadding(new Insets(20));
+
+        return layout;
     }
 }

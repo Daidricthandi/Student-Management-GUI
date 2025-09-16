@@ -1,114 +1,109 @@
 package View;
 
-import javafx.collections.FXCollections;
-import javafx.collections.transformation.FilteredList;
-import javafx.geometry.Insets;
-import javafx.geometry.Pos;
-import javafx.scene.Scene;
-import javafx.scene.control.*;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.VBox;
-import javafx.stage.Stage;
-import Model.Student;
 import Util.DataManager;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.geometry.Insets;
+import javafx.scene.control.*;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Pane;
+import javafx.scene.layout.VBox;
+import Model.Student;
 
 public class ListStudentView {
 
-    public static void display() {
-        Stage window = new Stage();
-        window.setTitle("List of Students");
+    public static Pane getView(Pane contentArea) {
+        // Table setup
+        TableView<Student> table = new TableView<>();
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
-        // Create a search field
+        TableColumn<Student, String> idCol = new TableColumn<>("ID");
+        idCol.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().getId()));
+
+        TableColumn<Student, String> nameCol = new TableColumn<>("Name");
+        nameCol.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().getName()));
+
+        TableColumn<Student, Number> ageCol = new TableColumn<>("Age");
+        ageCol.setCellValueFactory(data -> new javafx.beans.property.SimpleIntegerProperty(data.getValue().getAge()));
+
+        TableColumn<Student, String> courseCol = new TableColumn<>("Course");
+        courseCol.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().getCourse()));
+
+        table.getColumns().addAll(idCol, nameCol, ageCol, courseCol);
+
+        // Load data
+        ObservableList<Student> students = FXCollections.observableArrayList(DataManager.getStudents());
+        table.setItems(students);
+
+        // Search bar
         TextField searchField = new TextField();
         searchField.setPromptText("Search by ID or Name...");
-
-        // Table to display students
-        TableView<Student> table = new TableView<>();
-        table.setItems(FXCollections.observableArrayList(DataManager.getStudents()));
-
-        TableColumn<Student, String> idColumn = new TableColumn<>("ID");
-        idColumn.setCellValueFactory(cellData -> new javafx.beans.property.SimpleStringProperty(cellData.getValue().getId()));
-
-        TableColumn<Student, String> nameColumn = new TableColumn<>("Name");
-        nameColumn.setCellValueFactory(cellData -> new javafx.beans.property.SimpleStringProperty(cellData.getValue().getName()));
-
-        table.getColumns().addAll(idColumn, nameColumn);
-
-        // Wrap the student list in a FilteredList for searching
-        FilteredList<Student> filteredData = new FilteredList<>(FXCollections.observableArrayList(DataManager.getStudents()), p -> true);
-        table.setItems(filteredData);
-
-        // Filter logic: updates when user types
-        searchField.textProperty().addListener((observable, oldValue, newValue) -> {
-            filteredData.setPredicate(student -> {
-                if (newValue == null || newValue.isEmpty()) {
-                    return true; // Show all if search is empty
+        searchField.textProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal == null || newVal.isEmpty()) {
+                table.setItems(FXCollections.observableArrayList(DataManager.getStudents()));
+            } else {
+                ObservableList<Student> filtered = FXCollections.observableArrayList();
+                for (Student s : DataManager.getStudents()) {
+                    if (s.getId().toLowerCase().contains(newVal.toLowerCase())
+                            || s.getName().toLowerCase().contains(newVal.toLowerCase())) {
+                        filtered.add(s);
+                    }
                 }
-
-                String lowerCaseFilter = newValue.toLowerCase();
-
-                return student.getId().toLowerCase().contains(lowerCaseFilter) ||
-                        student.getName().toLowerCase().contains(lowerCaseFilter);
-            });
+                table.setItems(filtered);
+            }
         });
 
-        // Edit button
-        Button editButton = new Button("Edit Selected");
-        editButton.setOnAction(e -> editSelectedStudent(table));
+        // Buttons
+        Button addBtn = new Button("➕ Add New Student");
+        addBtn.setOnAction(e -> contentArea.getChildren().setAll(AddStudentView.getView(contentArea)));
 
-        // Delete button
-        Button deleteButton = new Button("Delete Selected");
-        deleteButton.setOnAction(e -> deleteSelectedStudent(table, filteredData));
+        Button editBtn = new Button("✏️ Edit Selected");
+        editBtn.setOnAction(e -> {
+            Student selected = table.getSelectionModel().getSelectedItem();
+            if (selected != null) {
+                contentArea.getChildren().setAll(EditStudentView.getView(contentArea, selected));
+            } else {
+                showAlert("No Selection", "Please select a student to edit.");
+            }
+        });
+
+        Button deleteBtn = new Button("🗑️ Delete Selected");
+        deleteBtn.setOnAction(e -> {
+            Student selected = table.getSelectionModel().getSelectedItem();
+            if (selected != null) {
+                Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
+                        "Are you sure you want to delete student " + selected.getName() + "?",
+                        ButtonType.YES, ButtonType.NO);
+                confirm.showAndWait().ifPresent(response -> {
+                    if (response == ButtonType.YES) {
+                        DataManager.removeStudent(selected);
+                        table.setItems(FXCollections.observableArrayList(DataManager.getStudents()));
+                    }
+                });
+            } else {
+                showAlert("No Selection", "Please select a student to delete.");
+            }
+        });
 
         // Layout
-        HBox buttonLayout = new HBox(10, editButton, deleteButton);
-        buttonLayout.setAlignment(Pos.CENTER);
+        HBox controls = new HBox(10, addBtn, editBtn, deleteBtn);
+        controls.setPadding(new Insets(10));
 
-        VBox layout = new VBox(10, searchField, table, buttonLayout);
-        layout.setPadding(new Insets(10));
+        VBox topBox = new VBox(10, searchField, controls);
+        topBox.setPadding(new Insets(10));
 
-        Scene scene = new Scene(layout, 500, 400);
-        window.setScene(scene);
-        window.show();
+        BorderPane layout = new BorderPane();
+        layout.setTop(topBox);
+        layout.setCenter(table);
+
+        return layout;
     }
 
-    // Method to edit a selected student
-    private static void editSelectedStudent(TableView<Student> table) {
-        Student selected = table.getSelectionModel().getSelectedItem();
-        if (selected == null) {
-            showAlert("No Selection", "Please select a student to edit.");
-            return;
-        }
-        TextInputDialog dialog = new TextInputDialog(selected.getName());
-        dialog.setTitle("Edit Student");
-        dialog.setHeaderText("Editing Student: " + selected.getId());
-        dialog.setContentText("Enter new name:");
-
-        dialog.showAndWait().ifPresent(newName -> {
-            selected.setName(newName);
-            DataManager.saveStudents();
-            table.refresh();
-        });
-    }
-
-    // Method to delete a selected student
-    private static void deleteSelectedStudent(TableView<Student> table, FilteredList<Student> filteredData) {
-        Student selected = table.getSelectionModel().getSelectedItem();
-        if (selected == null) {
-            showAlert("No Selection", "Please select a student to delete.");
-            return;
-        }
-        DataManager.removeStudent(selected);
-        filteredData.getSource().remove(selected);
-        table.refresh();
-    }
-
-    // Helper method for alerts
-    private static void showAlert(String title, String content) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+    private static void showAlert(String title, String message) {
+        Alert alert = new Alert(Alert.AlertType.WARNING);
         alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(content);
+        alert.setContentText(message);
         alert.showAndWait();
     }
 }

@@ -1,6 +1,8 @@
 import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import View.AddStudentView;
@@ -8,30 +10,46 @@ import View.ListStudentView;
 
 public class Main extends Application {
 
+    private StackPane contentArea; //This is where views will load
+
     @Override
     public void start(Stage primaryStage) {
-        // Create buttons for the main menu
+        // Navigation buttons
         Button addBtn = new Button("Add Student");
-        addBtn.setOnAction(e -> AddStudentView.display()); // Opens Add Student window
-
         Button listBtn = new Button("List Students");
-        listBtn.setOnAction(e -> ListStudentView.display()); // ✅ Opens List Student window
-
         Button exitBtn = new Button("Exit");
-        exitBtn.setOnAction(e -> primaryStage.close()); // Close the application
 
-        // Layout for the main menu
-        VBox layout = new VBox(20, addBtn, listBtn, exitBtn);
-        layout.setStyle("-fx-padding: 50; -fx-alignment: center;");
+        // Layout for the navigation menu
+        VBox navMenu = new VBox(20, addBtn, listBtn, exitBtn);
+        navMenu.setStyle("-fx-padding: 20; -fx-background-color: #dfe6e9; -fx-alignment: top-center;");
 
-        // Create the scene and set it on the primary stage
-        Scene scene = new Scene(layout, 300, 200);
+        //content area
+        contentArea = new StackPane();
+        contentArea.setStyle("-fx-padding: 20;");
+
+        //Main layout
+        BorderPane root = new BorderPane();
+        root.setLeft(navMenu);
+        root.setCenter(contentArea);
+
+        //Buttons actions
+        addBtn.setOnAction(e -> setContent(AddStudentView.getView(contentArea)));
+        listBtn.setOnAction(e -> setContent(ListStudentView.getView(contentArea)));
+        exitBtn.setOnAction(e -> primaryStage.close());
+
+        //show the main scene
+        Scene scene = new Scene(root, 800, 500);
         primaryStage.setScene(scene);
         primaryStage.setTitle("Student Management System");
-        primaryStage.show(); // Show the main window
+        primaryStage.show();
+    }
+
+    //Helper method to switch content
+    private void setContent(javafx.scene.layout.Pane view) {
+        contentArea.getChildren().setAll(view);
     }
 
     public static void main(String[] args) {
-        launch(args); // Launch JavaFX application
+        launch(args);
     }
 }
